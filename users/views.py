@@ -1,8 +1,31 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def signup(request):
+    """
+    Public signup endpoint for creating new users.
+    Allows unauthenticated users to register.
+    """
+    serializer = UserCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        # Set role to MASTER_ADMIN if not provided
+        user_data = serializer.validated_data
+        if 'role' not in user_data or not user_data.get('role'):
+            user_data['role'] = 'MASTER_ADMIN'
+        
+        user = serializer.save()
+        return Response({
+            'id': user.id,
+            'email': user.email,
+            'role': user.role,
+            'message': 'User created successfully'
+        }, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class IsTenantAdminOrMaster(permissions.BasePermission):
     """
